@@ -20,8 +20,8 @@ const ETH_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const KNC_TOKEN_ADDRESS = '0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6';
 const ETH_DECIMALS = 18;
 const KNC_DECIMALS = 18;
-// How many ETH you want to sell
-const QTY = 0.2;
+// How many KNC you want to sell
+const QTY = 100;
 // Gas price of the transaction
 const GAS_PRICE = 'medium';
 // wallet address for rinkeby
@@ -78,6 +78,61 @@ async function main() {
     let srcQty = rates.data[0].src_qty; */
 
     /*
+    ####################################
+    ### GET ENABLED STATUS OF WALLET ###
+    ####################################
+    */
+
+    // Querying the API /users/<user_address>/currencies endpoint
+    let enabledStatusesRequest = await fetch(
+        "https://ropsten-api.kyber.network/users/" + USER_ACCOUNT + "/currencies"
+    );
+    // Parsing the output
+    let enabledStatuses = await enabledStatusesRequest.json();
+    // Checking to see if DAI is enabled
+    let enabled = enabledStatuses.data.some(token => {
+        if (token.id == KNC_TOKEN_ADDRESS.toLowerCase()) {
+            return token.enabled;
+        }
+    });
+
+    /*
+    ####################################
+    ### ENABLE WALLET IF NOT ENABLED ###
+    ####################################
+    */
+
+    if (!enabled) {
+        // Querying the API /users/<user_address>/currencies/<currency_id>/enable_data?gas_price=<gas_price> endpoint
+        let enableTokenDetailsRequest = await fetch(
+            "https://ropsten-api.kyber.network/users/" +
+            USER_ACCOUNT +
+            "/currencies/" +
+            KNC_TOKEN_ADDRESS +
+            "/enable_data?gas_price=" +
+            GAS_PRICE
+        );
+        // Parsing the output
+        let enableTokenDetails = await enableTokenDetailsRequest.json();
+        // Extract the raw transaction details
+        let rawTx = enableTokenDetails.data;
+        console.log(rawTx);
+        // Create a new transaction
+        let tx = new Tx(rawTx, { 'chain': 'ropsten' });
+        // Signing the transaction
+        tx.sign(PRIVATE_KEY);
+        // Serialise the transaction (RLP encoding)
+        let serializedTx = tx.serialize();
+        // Broadcasting the transaction
+        txReceipt = await web3.eth
+            .sendSignedTransaction("0x" + serializedTx.toString("hex"))
+            .catch(error => console.log(error));
+        // Log the transaction receipt
+        console.log(txReceipt);
+    }
+
+
+    /*
     #######################
     ### TRADE EXECUTION ###
     #######################
@@ -85,14 +140,14 @@ async function main() {
 
     // Querying the API /trade_data endpoint
     // Note that a factor of 0.97 is used to account for slippage but you can use any value you want.
-    let destAmount = await getQuoteAmount(ETH_TOKEN_ADDRESS, KNC_TOKEN_ADDRESS, QTY);
+    let destAmount = await getQuoteAmount(KNC_TOKEN_ADDRESS, ETH_TOKEN_ADDRESS, QTY);
     let tradeDetailsRequest = await fetch(
         `${NETWORK_URL}/trade_data?user_address=` +
         USER_ACCOUNT +
         "&src_id=" +
-        ETH_TOKEN_ADDRESS +
-        "&dst_id=" +
         KNC_TOKEN_ADDRESS +
+        "&dst_id=" +
+        ETH_TOKEN_ADDRESS +
         "&src_qty=" +
         QTY +
         "&min_dst_qty=" +
