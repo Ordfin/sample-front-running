@@ -13,8 +13,6 @@ const NETWORK_URL = `https://${NETWORK}-api.kyber.network`;
 
 // Representation of ETH as an address on Ropsten
 const ETH_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-// KNC contract address on Rinkeby
-// const KNC_TOKEN_ADDRESS = '0x6FA355a7b6bD2D6bD8b927C489221BFBb6f1D7B2';
 
 // KNC contract address on Ropsten
 const KNC_TOKEN_ADDRESS = '0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6';
@@ -24,12 +22,8 @@ const KNC_DECIMALS = 18;
 const QTY = 10;
 // Gas price of the transaction
 const GAS_PRICE = 'medium';
-// wallet address for rinkeby
-// const USER_ACCOUNT = '0xd0ee49F0B17144CF7D046c4EF442003D89b84e50';
 // Your Ethereum wallet address for ropsten
 const USER_ACCOUNT = 'ENTER YOUR WALLET ADDRESS';
-// private key for rinkeby
-// const PRIVATE_KEY = Buffer.from('F06AC31EC8660085CA78727B72B8EE6C39281614315F772CCA2BF18919750D93', 'hex');
 // Your private key for ropsten
 const PRIVATE_KEY = Buffer.from('ENTER YOUR PRIVATE KEY', 'hex');
 
