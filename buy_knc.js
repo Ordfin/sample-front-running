@@ -5,9 +5,11 @@ var fetch = require('node-fetch');
 // import ethereumjs-tx to sign and serialise transactions
 var Tx = require('ethereumjs-tx').Transaction;
 
+const NETWORK = "ropsten";
+const PROJECT_ID = "5d664eb0e357434389de19c203e530c1";
 // Connect to Infura’s ropsten node
-const web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io"));
-const NETWORK_URL = "https://ropsten-api.kyber.network";
+const web3 = new Web3(new Web3.providers.HttpProvider(`https://${NETWORK}.infura.io/v3/${PROJECT_ID}`));
+const NETWORK_URL = `https://${NETWORK}-api.kyber.network`;
 
 // Representation of ETH as an address on Ropsten
 const ETH_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
@@ -40,7 +42,7 @@ async function main() {
 
     // Querying the API /currencies endpoint
     let tokenInfoRequest = await fetch(
-        "https://ropsten-api.kyber.network/currencies"
+        `${NETWORK_URL}/currencies`
     );
     // Parsing the output
     let tokens = await tokenInfoRequest.json();
