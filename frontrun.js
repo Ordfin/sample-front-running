@@ -1,6 +1,6 @@
 /**
  * Perform a front-running attack on Kyber Network (ropsten)
- * @author Jiaying Yao
+ * @author chromiumsilver
  */
 
 var Web3 = require('web3');
