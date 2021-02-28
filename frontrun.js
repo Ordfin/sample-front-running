@@ -1,6 +1,6 @@
 /**
- * Perform a front-running attack on Kyber Network (ropsten)
- * @author chromiumsilver
+ * Performs a front-running action on Kyber Network (ropsten)
+ * @author chromiumsilver forked by Ordfin
  */
 
 var Web3 = require('web3');
