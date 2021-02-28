@@ -1,4 +1,4 @@
-# Kyber front-running
+# Sample front-running
 
 ## Requirements
 1. Install latest Node.js
